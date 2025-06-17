@@ -98,6 +98,14 @@ body {
   box-shadow: var(--shadow);
   z-index: 10;
   transition: transform var(--transition-speed) ease, background-color var(--transition-speed);
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+/* Sidebar toggle state */
+.sidebar.collapsed {
+  transform: translateX(calc(-1 * var(--sidebar-width)));
 }
 
 .logo {
@@ -433,6 +441,12 @@ body {
   position: relative;
   background: radial-gradient(circle at top right, rgba(52, 152, 219, 0.05), transparent 60%),
               radial-gradient(circle at bottom left, rgba(46, 204, 113, 0.05), transparent 60%);
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--transition-speed) ease;
+}
+
+.main-content.full-width {
+  margin-left: 0;
 }
 
 .menu-toggle {
@@ -907,11 +921,21 @@ code {
     position: fixed;
     left: 0;
     top: 0;
-    transform: translateX(-100%);
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+    box-shadow: var(--shadow);
   }
   
-  .sidebar.open {
+  .sidebar.collapsed {
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+  }
+  
+  .sidebar:not(.collapsed) {
     transform: translateX(0);
+  }
+  
+  .main-content {
+    margin-left: 0;
+    padding-top: 60px;
   }
   
   .menu-toggle {
@@ -920,7 +944,6 @@ code {
   
   .chat-container {
     padding: 15px;
-    padding-top: 60px;
   }
   
   .theme-toggle {
@@ -944,5 +967,49 @@ code {
   
   .welcome-subtitle {
     font-size: 16px;
+  }
+}
+
+.sidebar::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  width: 24px;
+  height: 50px;
+  background-color: var(--dark-bg);
+  border: 1px solid var(--border-color);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  transform: translateY(-50%);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+  opacity: 0.8;
+}
+
+.sidebar::before {
+  content: '⟪';
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 12px;
+  z-index: 11;
+  cursor: pointer;
+}
+
+.sidebar.collapsed::before {
+  content: '⟫';
+}
+
+@media (max-width: 900px) {
+  .sidebar::after,
+  .sidebar::before {
+    display: none;
   }
 } 

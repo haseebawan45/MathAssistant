@@ -60,22 +60,49 @@ if (themeToggle) {
 // Initialize theme on load
 initTheme();
 
+// Initialize sidebar state based on screen size
+function initSidebarState() {
+  if (window.innerWidth <= 900) {
+    sidebar.classList.add("collapsed");
+    document.querySelector(".main-content").classList.add("full-width");
+  } else {
+    sidebar.classList.remove("collapsed");
+    document.querySelector(".main-content").classList.remove("full-width");
+  }
+}
+
+// Initialize sidebar on load and window resize
+window.addEventListener('load', initSidebarState);
+window.addEventListener('resize', initSidebarState);
+
 // Mobile menu toggle
 if (menuToggle) {
   menuToggle.addEventListener("click", () => {
-    sidebar.classList.toggle("open");
+    sidebar.classList.toggle("collapsed");
+    document.querySelector(".main-content").classList.toggle("full-width");
   });
   
   // Close sidebar when clicking outside on mobile
   document.addEventListener("click", (e) => {
     if (window.innerWidth <= 900 && 
-        sidebar.classList.contains("open") && 
+        !sidebar.classList.contains("collapsed") && 
         !sidebar.contains(e.target) && 
         e.target !== menuToggle) {
-      sidebar.classList.remove("open");
+      sidebar.classList.add("collapsed");
+      document.querySelector(".main-content").classList.add("full-width");
     }
   });
 }
+
+// Make sidebar clickable to toggle
+sidebar.addEventListener("click", (e) => {
+  // Toggle if clicking on the sidebar itself, the before or after pseudo-elements
+  if (e.target === sidebar || 
+      e.clientX > sidebar.getBoundingClientRect().right - 24) {
+    sidebar.classList.toggle("collapsed");
+    document.querySelector(".main-content").classList.toggle("full-width");
+  }
+});
 
 // Add event listener for Enter key
 userInput.addEventListener("keydown", (e) => {
