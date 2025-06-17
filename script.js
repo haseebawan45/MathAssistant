@@ -8,6 +8,25 @@ const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
 const welcomeScreen = document.getElementById("welcome-screen");
 const chatHistoryContainer = document.getElementById("chat-history");
+const sidebar = document.getElementById("sidebar");
+const menuToggle = document.getElementById("menu-toggle");
+
+// Mobile menu toggle
+if (menuToggle) {
+  menuToggle.addEventListener("click", () => {
+    sidebar.classList.toggle("open");
+  });
+  
+  // Close sidebar when clicking outside on mobile
+  document.addEventListener("click", (e) => {
+    if (window.innerWidth <= 900 && 
+        sidebar.classList.contains("open") && 
+        !sidebar.contains(e.target) && 
+        e.target !== menuToggle) {
+      sidebar.classList.remove("open");
+    }
+  });
+}
 
 // Add event listener for Enter key
 userInput.addEventListener("keydown", (e) => {
@@ -50,6 +69,19 @@ let chatsCollection;
 
 // Wait for Firebase to initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  // Focus input field
+  userInput.focus();
+  
+  // Add input container focus effect
+  const inputContainer = document.querySelector('.input-container');
+  userInput.addEventListener('focus', () => {
+    inputContainer.classList.add('focused');
+  });
+  
+  userInput.addEventListener('blur', () => {
+    inputContainer.classList.remove('focused');
+  });
+  
   // Wait for Firebase to be available
   await waitForFirebase();
   
@@ -82,11 +114,20 @@ function waitForFirebase() {
 // Load chat history from Firestore
 async function loadChatHistory() {
   try {
-    // Clear loading indicator
-    chatHistoryContainer.innerHTML = '';
+    // Show loading animation
+    chatHistoryContainer.innerHTML = `
+      <div class="loading-history">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    `;
     
     // Get chats ordered by last updated timestamp
     const snapshot = await chatsCollection.orderBy('updatedAt', 'desc').get();
+    
+    // Clear loading indicator
+    chatHistoryContainer.innerHTML = '';
     
     if (snapshot.empty) {
       // No chats found, create a new one
@@ -200,6 +241,11 @@ function addChatSection(title, chats) {
     // Add click event
     item.addEventListener('click', () => {
       setCurrentChat(chat.id);
+      
+      // Close sidebar on mobile after selection
+      if (window.innerWidth <= 900) {
+        sidebar.classList.remove("open");
+      }
     });
     
     section.appendChild(item);
@@ -223,6 +269,22 @@ async function setCurrentChat(chatId) {
       }
     });
     
+    // Show loading in chat box
+    chatBox.innerHTML = '';
+    chatBox.style.display = "flex";
+    welcomeScreen.style.display = "none";
+    
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading-messages';
+    loadingDiv.innerHTML = `
+      <div class="loading-indicator">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    `;
+    chatBox.appendChild(loadingDiv);
+    
     // Get chat data
     const chatDoc = await chatsCollection.doc(chatId).get();
     
@@ -240,10 +302,6 @@ async function setCurrentChat(chatId) {
     
     // Clear chat box
     chatBox.innerHTML = '';
-    
-    // Hide welcome screen if visible
-    welcomeScreen.style.display = "none";
-    chatBox.style.display = "flex";
     
     // Load messages
     if (chat.messages && chat.messages.length > 0) {
@@ -267,6 +325,14 @@ async function setCurrentChat(chatId) {
     
   } catch (error) {
     console.error("Error setting current chat:", error);
+    
+    // Show error message
+    chatBox.innerHTML = `
+      <div class="chat-error">
+        Failed to load chat messages.
+        <button class="retry-btn" onclick="setCurrentChat('${chatId}')">Retry</button>
+      </div>
+    `;
   }
 }
 
@@ -299,8 +365,22 @@ async function createNewChat() {
     // Reload chat history in sidebar
     loadChatHistory();
     
+    // Focus on input
+    userInput.focus();
+    
   } catch (error) {
     console.error("Error creating new chat:", error);
+    
+    // Show error notification
+    const notification = document.createElement('div');
+    notification.className = 'notification error';
+    notification.textContent = 'Failed to create new chat.';
+    document.body.appendChild(notification);
+    
+    // Remove notification after 3 seconds
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
   }
 }
 

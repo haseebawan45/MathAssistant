@@ -14,7 +14,7 @@
 </head>
 <body>
   <!-- Sidebar -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="logo">
       <span>Math Assistant</span>
       <button class="copy-btn" title="Copy">
@@ -35,23 +35,15 @@
         <div class="dot"></div>
       </div>
     </div>
-    
-    <button class="app-button">
-      <i class="fas fa-mobile-alt"></i>
-      Get App
-      <span class="badge">NEW</span>
-    </button>
-    
-    <div class="user-profile">
-      <div class="user-avatar">
-        <i class="fas fa-user"></i>
-      </div>
-      <span>My Profile</span>
-    </div>
   </div>
   
   <!-- Main Content -->
   <div class="main-content">
+    <!-- Mobile menu toggle -->
+    <button class="menu-toggle" id="menu-toggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    
     <div class="chat-container">
       <!-- Welcome screen when no messages -->
       <div class="welcome-container" id="welcome-screen">
@@ -79,9 +71,6 @@
         <div class="input-container">
           <textarea id="user-input" placeholder="Ask me any math question..." rows="1"></textarea>
           <div class="input-buttons">
-            <button class="action-button" title="Attach files">
-              <i class="fas fa-paperclip"></i>
-            </button>
             <button id="send-btn" title="Send message">
               <i class="fas fa-paper-plane"></i>
             </button>
