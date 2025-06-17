@@ -274,9 +274,61 @@ function addChatSection(title, chats) {
     const chatItem = document.createElement('div');
     chatItem.className = 'history-item';
     chatItem.dataset.id = chat.id;
-    chatItem.textContent = chat.title || 'New Chat';
     
-    // Add click event
+    // Create chat item content wrapper
+    const chatContent = document.createElement('div');
+    chatContent.className = 'history-item-content';
+    chatContent.textContent = chat.title || 'New Chat';
+    
+    // Create menu button
+    const menuButton = document.createElement('button');
+    menuButton.className = 'history-item-menu';
+    menuButton.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
+    
+    // Create dropdown menu
+    const dropdownMenu = document.createElement('div');
+    dropdownMenu.className = 'history-dropdown-menu';
+    
+    // Add delete option
+    const deleteOption = document.createElement('div');
+    deleteOption.className = 'history-dropdown-item';
+    deleteOption.innerHTML = '<i class="fas fa-trash"></i> Delete';
+    deleteOption.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      
+      // Confirm deletion
+      if (confirm('Are you sure you want to delete this chat?')) {
+        await deleteChat(chat.id);
+      }
+      
+      // Hide dropdown
+      dropdownMenu.classList.remove('active');
+    });
+    
+    // Add options to dropdown
+    dropdownMenu.appendChild(deleteOption);
+    
+    // Add event listener to menu button
+    menuButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      
+      // Close all other dropdowns first
+      document.querySelectorAll('.history-dropdown-menu.active').forEach(menu => {
+        if (menu !== dropdownMenu) {
+          menu.classList.remove('active');
+        }
+      });
+      
+      // Toggle this dropdown
+      dropdownMenu.classList.toggle('active');
+    });
+    
+    // Add elements to chat item
+    chatItem.appendChild(chatContent);
+    chatItem.appendChild(menuButton);
+    chatItem.appendChild(dropdownMenu);
+    
+    // Add click event for selecting chat
     chatItem.addEventListener('click', () => {
       setCurrentChat(chat.id);
       
@@ -286,7 +338,15 @@ function addChatSection(title, chats) {
       }
     });
     
+    // Add to sidebar
     chatHistoryContainer.appendChild(chatItem);
+  });
+  
+  // Add click event to close dropdowns when clicking elsewhere
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.history-dropdown-menu.active').forEach(menu => {
+      menu.classList.remove('active');
+    });
   });
 }
 
@@ -872,4 +932,49 @@ document.querySelector('.new-chat-btn').addEventListener('click', () => {
 // First-time focus on input field
 window.onload = () => {
   userInput.focus();
-}; 
+};
+
+// Delete chat function
+async function deleteChat(chatId) {
+  try {
+    // Check if this is the current chat
+    const isCurrentChat = chatId === currentChatId;
+    
+    // Delete from main chats collection
+    const chatDocRef = doc(window.db, 'chats', chatId);
+    await deleteDoc(chatDocRef);
+    
+    // Delete from user's chats collection
+    const userChatRef = doc(window.db, 'users', currentUser.uid, 'chats', chatId);
+    await deleteDoc(userChatRef);
+    
+    // Remove from UI
+    const chatElement = document.querySelector(`.history-item[data-id="${chatId}"]`);
+    if (chatElement) {
+      chatElement.remove();
+    }
+    
+    // If this was the current chat, show welcome screen or load another chat
+    if (isCurrentChat) {
+      // Reset current chat ID
+      currentChatId = null;
+      
+      // Show welcome screen
+      welcomeScreen.style.display = "flex";
+      chatBox.style.display = "none";
+      
+      // Try to find another chat to load
+      const firstChat = document.querySelector('.history-item');
+      if (firstChat) {
+        setCurrentChat(firstChat.dataset.id);
+      }
+    }
+    
+    // Show success notification
+    showNotification('Chat deleted successfully', 'success');
+    
+  } catch (error) {
+    console.error("Error deleting chat:", error);
+    showNotification('Failed to delete chat', 'error');
+  }
+} 
