@@ -1,6 +1,6 @@
 # 🧮 MathBot - Math Problem Solver
 
-A beautiful, responsive math-focused chatbot powered by Google Gemini AI. This application helps solve mathematical problems with clean LaTeX rendering.
+A beautiful, responsive math-focused chatbot powered by Google Gemini 2.0 Flash. This application helps solve mathematical problems with clean LaTeX rendering.
 
 ![MathBot Demo](https://i.imgur.com/placeholder.gif)
 
@@ -11,6 +11,7 @@ A beautiful, responsive math-focused chatbot powered by Google Gemini AI. This a
 - 📐 LaTeX rendering for mathematical expressions
 - 💬 Chat-like interface for easy interaction
 - 📱 Mobile-friendly design
+- 🔄 Smart rate limit handling with exponential backoff
 
 ## Getting Started
 
@@ -39,6 +40,17 @@ Try asking questions like:
 - "What is the integral of ln(x)?"
 - "Find the eigenvalues of [[2,1],[1,2]]"
 - "Prove that the sum of two odd numbers is even"
+
+## Rate Limiting Solution
+
+This application uses Gemini 2.0 Flash, which has better rate limits on the free tier (15 requests per minute, 1,500 requests per day). It also implements exponential backoff to handle any rate limiting gracefully:
+
+1. When a rate limit error (HTTP 429) is encountered, the app will:
+   - Show a message indicating it's retrying
+   - Wait for an increasing amount of time between retries
+   - Automatically retry the request up to 5 times
+
+This ensures a better user experience even when hitting API limits.
 
 ## ⚠️ Security Note
 

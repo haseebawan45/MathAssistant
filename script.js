@@ -1,6 +1,6 @@
 // Configuration
 const API_KEY = "AIzaSyDT28ot1ZVsC0zkBkhDKZoTq3HnWbkjWV8";
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+const API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
 
 // DOM Elements
 const chatBox = document.getElementById("chat-box");
@@ -19,6 +19,11 @@ let chatHistory = [
   { role: "system", content: "You are a math expert assistant. Only respond to math-related questions. For non-math questions, politely redirect the conversation to mathematics. Always format your answers using LaTeX for equations when appropriate. Be concise but thorough in your explanations." }
 ];
 
+// Backoff parameters
+let retryCount = 0;
+const MAX_RETRIES = 5;
+const INITIAL_BACKOFF_MS = 1000; // 1 second
+
 // Function to send questions to the API
 async function sendQuestion() {
   const question = userInput.value.trim();
@@ -33,9 +38,17 @@ async function sendQuestion() {
   // Show loading indicator
   showLoading();
   
-  // Add to chat history for UI (Gemini doesn't use the same format)
+  // Add to chat history for UI
   chatHistory.push({ role: "user", content: question });
   
+  // Reset retry count for new question
+  retryCount = 0;
+  
+  await sendRequestWithBackoff(question);
+}
+
+// Function to send API request with exponential backoff
+async function sendRequestWithBackoff(question) {
   try {
     // Format messages for Gemini API
     const messages = formatMessagesForGemini();
@@ -56,6 +69,11 @@ async function sendQuestion() {
         }
       })
     });
+    
+    // Check if we hit rate limits
+    if (response.status === 429) {
+      throw new Error("Rate limit exceeded");
+    }
     
     // Parse response
     const data = await response.json();
@@ -83,11 +101,33 @@ async function sendQuestion() {
   } catch (error) {
     console.error("API Error:", error);
     
+    // Handle rate limit errors with exponential backoff
+    if (error.message.includes("Rate limit") && retryCount < MAX_RETRIES) {
+      retryCount++;
+      const backoffTime = INITIAL_BACKOFF_MS * Math.pow(2, retryCount - 1);
+      console.log(`Rate limit hit. Retrying in ${backoffTime/1000} seconds... (Attempt ${retryCount} of ${MAX_RETRIES})`);
+      
+      // Update loading message
+      updateLoadingMessage(`Rate limit hit. Retrying in ${backoffTime/1000} seconds... (Attempt ${retryCount} of ${MAX_RETRIES})`);
+      
+      // Wait and retry
+      setTimeout(() => sendRequestWithBackoff(question), backoffTime);
+      return;
+    }
+    
     // Remove loading indicator
     removeLoading();
     
     // Show error message
-    addMessageToChat("bot", "Sorry, I encountered an error. Please try again.");
+    addMessageToChat("bot", "Sorry, I encountered an error. Please try again in a moment.");
+  }
+}
+
+// Update loading message
+function updateLoadingMessage(message) {
+  const loadingElement = document.querySelector(".loading .message-content");
+  if (loadingElement) {
+    loadingElement.textContent = message;
   }
 }
 
@@ -197,7 +237,12 @@ function showLoading() {
     loadingIndicator.appendChild(dot);
   }
   
+  const messageContent = document.createElement("div");
+  messageContent.className = "message-content";
+  messageContent.textContent = "Thinking...";
+  
   loadingDiv.appendChild(avatar);
+  loadingDiv.appendChild(messageContent);
   loadingDiv.appendChild(loadingIndicator);
   
   chatBox.appendChild(loadingDiv);
