@@ -1,3 +1,4 @@
+/* Dark mode (default) */
 :root {
   --primary-color: #3498db;
   --primary-light: rgba(52, 152, 219, 0.15);
@@ -17,6 +18,35 @@
   --sidebar-width: 280px;
   --border-radius: 12px;
   --transition-speed: 0.2s;
+  --border-color: rgba(255, 255, 255, 0.05);
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+}
+
+/* Light mode */
+[data-theme="light"] {
+  --primary-color: #2980b9;
+  --primary-light: rgba(52, 152, 219, 0.1);
+  --primary-dark: #1a5d8a;
+  --secondary-color: #27ae60;
+  --secondary-light: rgba(46, 204, 113, 0.1);
+  --accent-color: #8e44ad;
+  --text-color: #333333;
+  --text-muted: #666666;
+  --dark-bg: #ffffff;
+  --darker-bg: #f5f5f5;
+  --chat-bg: #ffffff;
+  --message-bg: #f0f0f0;
+  --user-message-bg: #f0f0f0;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --glow: 0 0 15px rgba(52, 152, 219, 0.3);
+  --border-color: rgba(0, 0, 0, 0.1);
+  --hover-bg: rgba(0, 0, 0, 0.03);
+  --scrollbar-track: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.1);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.2);
 }
 
 * {
@@ -33,6 +63,7 @@ body {
   min-height: 100vh;
   overflow: hidden;
   line-height: 1.6;
+  transition: background-color var(--transition-speed), color var(--transition-speed);
 }
 
 /* Scrollbar styling */
@@ -42,17 +73,17 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--scrollbar-track);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--scrollbar-thumb);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Sidebar */
@@ -63,10 +94,10 @@ body {
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid var(--border-color);
   box-shadow: var(--shadow);
   z-index: 10;
-  transition: transform var(--transition-speed) ease;
+  transition: transform var(--transition-speed) ease, background-color var(--transition-speed);
 }
 
 .logo {
@@ -103,7 +134,7 @@ body {
 }
 
 .copy-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--hover-bg);
   color: var(--text-color);
 }
 
@@ -155,7 +186,7 @@ body {
 }
 
 .history-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--hover-bg);
   color: var(--text-color);
 }
 
@@ -195,7 +226,7 @@ body {
 }
 
 .history-item-menu:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--hover-bg);
   color: var(--text-color);
 }
 
@@ -234,7 +265,7 @@ body {
 }
 
 .history-dropdown-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--hover-bg);
 }
 
 .history-dropdown-item i {
@@ -303,7 +334,7 @@ body {
 }
 
 .user-profile:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--hover-bg);
 }
 
 .user-avatar {
@@ -353,7 +384,7 @@ body {
 }
 
 .user-menu-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--hover-bg);
   color: var(--text-color);
 }
 
@@ -390,7 +421,7 @@ body {
 }
 
 .user-menu-dropdown a:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--hover-bg);
 }
 
 /* Main chat area */
@@ -425,7 +456,7 @@ body {
 }
 
 .menu-toggle:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--hover-bg);
 }
 
 .chat-container {
@@ -537,8 +568,8 @@ body {
   padding: 8px 14px;
   border-radius: var(--border-radius);
   background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
   font-size: 13px;
   cursor: pointer;
   display: flex;
@@ -548,8 +579,7 @@ body {
 }
 
 .model-button:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-color);
+  background-color: var(--hover-bg);
 }
 
 .model-button.active {
@@ -563,7 +593,7 @@ body {
   position: relative;
   border-radius: var(--border-radius);
   background-color: var(--message-bg);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   transition: all var(--transition-speed);
@@ -589,7 +619,12 @@ body {
 }
 
 #user-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+[data-theme="light"] #user-input::placeholder {
+  color: #999999;
 }
 
 .input-buttons {
@@ -832,6 +867,40 @@ code {
   opacity: 0.8;
 }
 
+/* Theme toggle button */
+.theme-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-size: 20px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-speed);
+  background-color: var(--message-bg);
+  box-shadow: var(--shadow);
+}
+
+.theme-toggle:hover {
+  transform: scale(1.05);
+}
+
+.theme-toggle i {
+  transition: transform 0.5s ease;
+}
+
+.theme-toggle:hover i {
+  transform: rotate(30deg);
+}
+
 /* Responsive design */
 @media (max-width: 900px) {
   .sidebar {
@@ -852,6 +921,11 @@ code {
   .chat-container {
     padding: 15px;
     padding-top: 60px;
+  }
+  
+  .theme-toggle {
+    top: 20px;
+    right: 20px;
   }
 }
 

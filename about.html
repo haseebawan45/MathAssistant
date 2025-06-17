@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
@@ -24,6 +24,11 @@
         <p class="about-version">Version 1.0.0</p>
       </div>
     </header>
+
+    <!-- Theme toggle button -->
+    <button class="theme-toggle" id="theme-toggle">
+      <i class="fas fa-moon"></i>
+    </button>
 
     <!-- Main Content -->
     <main class="about-main">
@@ -167,6 +172,53 @@
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    
+    // Theme handling
+    function initTheme() {
+      // Check for saved theme preference or use device preference
+      const savedTheme = localStorage.getItem('theme') || 
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      
+      // Apply the theme
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      
+      // Update toggle button icon
+      updateThemeIcon(savedTheme);
+    }
+
+    // Update theme toggle icon based on current theme
+    function updateThemeIcon(theme) {
+      const themeToggle = document.getElementById('theme-toggle');
+      if (themeToggle) {
+        themeToggle.innerHTML = theme === 'light' 
+          ? '<i class="fas fa-moon"></i>' 
+          : '<i class="fas fa-sun"></i>';
+      }
+    }
+
+    // Toggle between light and dark theme
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      
+      // Save theme preference
+      localStorage.setItem('theme', newTheme);
+      
+      // Apply new theme
+      document.documentElement.setAttribute('data-theme', newTheme);
+      
+      // Update toggle button icon
+      updateThemeIcon(newTheme);
+    }
+
+    // Add event listener for theme toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', toggleTheme);
+    }
+
+    // Initialize theme on load
+    initTheme();
     
     // Check authentication state
     onAuthStateChanged(auth, (user) => {

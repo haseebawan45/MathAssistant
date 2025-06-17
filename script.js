@@ -13,6 +13,52 @@ const welcomeScreen = document.getElementById("welcome-screen");
 const chatHistoryContainer = document.getElementById("chat-history");
 const sidebar = document.getElementById("sidebar");
 const menuToggle = document.getElementById("menu-toggle");
+const themeToggle = document.getElementById("theme-toggle");
+
+// Theme handling
+function initTheme() {
+  // Check for saved theme preference or use device preference
+  const savedTheme = localStorage.getItem('theme') || 
+    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  
+  // Apply the theme
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  
+  // Update toggle button icon
+  updateThemeIcon(savedTheme);
+}
+
+// Update theme toggle icon based on current theme
+function updateThemeIcon(theme) {
+  if (themeToggle) {
+    themeToggle.innerHTML = theme === 'light' 
+      ? '<i class="fas fa-moon"></i>' 
+      : '<i class="fas fa-sun"></i>';
+  }
+}
+
+// Toggle between light and dark theme
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  
+  // Save theme preference
+  localStorage.setItem('theme', newTheme);
+  
+  // Apply new theme
+  document.documentElement.setAttribute('data-theme', newTheme);
+  
+  // Update toggle button icon
+  updateThemeIcon(newTheme);
+}
+
+// Add event listener for theme toggle
+if (themeToggle) {
+  themeToggle.addEventListener('click', toggleTheme);
+}
+
+// Initialize theme on load
+initTheme();
 
 // Mobile menu toggle
 if (menuToggle) {

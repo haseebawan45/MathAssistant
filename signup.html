@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -46,6 +46,11 @@
     
     <!-- Right Panel - Form -->
     <div class="auth-form-panel">
+      <!-- Theme toggle button -->
+      <button class="theme-toggle" id="theme-toggle">
+        <i class="fas fa-moon"></i>
+      </button>
+      
       <div class="auth-form-container">
         <div class="auth-header">
           <h2>Create Account</h2>
@@ -150,6 +155,52 @@
     const passwordStrength = document.getElementById('password-strength');
     const strengthSegments = document.querySelectorAll('.strength-segment');
     const strengthText = document.querySelector('.strength-text');
+    const themeToggle = document.getElementById('theme-toggle');
+    
+    // Theme handling
+    function initTheme() {
+      // Check for saved theme preference or use device preference
+      const savedTheme = localStorage.getItem('theme') || 
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      
+      // Apply the theme
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      
+      // Update toggle button icon
+      updateThemeIcon(savedTheme);
+    }
+
+    // Update theme toggle icon based on current theme
+    function updateThemeIcon(theme) {
+      if (themeToggle) {
+        themeToggle.innerHTML = theme === 'light' 
+          ? '<i class="fas fa-moon"></i>' 
+          : '<i class="fas fa-sun"></i>';
+      }
+    }
+
+    // Toggle between light and dark theme
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      
+      // Save theme preference
+      localStorage.setItem('theme', newTheme);
+      
+      // Apply new theme
+      document.documentElement.setAttribute('data-theme', newTheme);
+      
+      // Update toggle button icon
+      updateThemeIcon(newTheme);
+    }
+
+    // Add event listener for theme toggle
+    if (themeToggle) {
+      themeToggle.addEventListener('click', toggleTheme);
+    }
+
+    // Initialize theme on load
+    initTheme();
     
     // Show/Hide Password
     togglePasswordBtn.addEventListener('click', () => {
