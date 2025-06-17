@@ -242,18 +242,9 @@ async function loadChatHistory() {
       addChatSection('Older', olderChats);
     }
     
-    // Set current chat to the most recent one
-    if (todayChats.length > 0) {
-      setCurrentChat(todayChats[0].id);
-    } else if (yesterdayChats.length > 0) {
-      setCurrentChat(yesterdayChats[0].id);
-    } else if (weekChats.length > 0) {
-      setCurrentChat(weekChats[0].id);
-    } else if (monthChats.length > 0) {
-      setCurrentChat(monthChats[0].id);
-    } else if (olderChats.length > 0) {
-      setCurrentChat(olderChats[0].id);
-    }
+    // Show welcome screen initially - don't create a new chat automatically
+    welcomeScreen.style.display = "flex";
+    chatBox.style.display = "none";
     
   } catch (error) {
     console.error("Error loading chat history:", error);
@@ -549,8 +540,9 @@ async function createNewChat() {
     welcomeScreen.style.display = "flex";
     chatBox.style.display = "none";
     
-    // Reload chat history in sidebar
-    loadChatHistory();
+    // Don't reload chat history to prevent infinite loop
+    // Instead, manually add the new chat to the sidebar
+    addNewChatToSidebar(chatId);
     
     // Focus on input
     userInput.focus();
@@ -560,6 +552,98 @@ async function createNewChat() {
     
     // Show error notification
     showNotification('Failed to create new chat.', 'error');
+  }
+}
+
+// Add new chat to sidebar without reloading all chats
+function addNewChatToSidebar(chatId) {
+  // Find or create Today section
+  let todaySection = document.querySelector('.history-section:first-child');
+  if (!todaySection || todaySection.textContent !== 'Today') {
+    todaySection = document.createElement('div');
+    todaySection.className = 'history-section';
+    todaySection.textContent = 'Today';
+    chatHistoryContainer.insertBefore(todaySection, chatHistoryContainer.firstChild);
+  }
+  
+  // Create chat item
+  const chatItem = document.createElement('div');
+  chatItem.className = 'history-item active';
+  chatItem.dataset.id = chatId;
+  
+  // Create chat item content wrapper
+  const chatContent = document.createElement('div');
+  chatContent.className = 'history-item-content';
+  chatContent.textContent = 'New Chat';
+  
+  // Create menu button
+  const menuButton = document.createElement('button');
+  menuButton.className = 'history-item-menu';
+  menuButton.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
+  
+  // Create dropdown menu
+  const dropdownMenu = document.createElement('div');
+  dropdownMenu.className = 'history-dropdown-menu';
+  
+  // Add delete option
+  const deleteOption = document.createElement('div');
+  deleteOption.className = 'history-dropdown-item';
+  deleteOption.innerHTML = '<i class="fas fa-trash"></i> Delete';
+  deleteOption.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    
+    // Confirm deletion
+    if (confirm('Are you sure you want to delete this chat?')) {
+      await deleteChat(chatId);
+    }
+    
+    // Hide dropdown
+    dropdownMenu.classList.remove('active');
+  });
+  
+  // Add options to dropdown
+  dropdownMenu.appendChild(deleteOption);
+  
+  // Add event listener to menu button
+  menuButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    
+    // Close all other dropdowns first
+    document.querySelectorAll('.history-dropdown-menu.active').forEach(menu => {
+      if (menu !== dropdownMenu) {
+        menu.classList.remove('active');
+      }
+    });
+    
+    // Toggle this dropdown
+    dropdownMenu.classList.toggle('active');
+  });
+  
+  // Add elements to chat item
+  chatItem.appendChild(chatContent);
+  chatItem.appendChild(menuButton);
+  chatItem.appendChild(dropdownMenu);
+  
+  // Add click event for selecting chat
+  chatItem.addEventListener('click', () => {
+    setCurrentChat(chatId);
+    
+    // Close sidebar on mobile
+    if (window.innerWidth <= 900) {
+      sidebar.classList.remove('open');
+    }
+  });
+  
+  // Remove active class from all other chat items
+  document.querySelectorAll('.history-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  // Insert new chat item after the Today section
+  if (todaySection.nextSibling) {
+    chatHistoryContainer.insertBefore(chatItem, todaySection.nextSibling);
+  } else {
+    chatHistoryContainer.appendChild(chatItem);
   }
 }
 
@@ -686,7 +770,12 @@ async function updateChatTitle(message) {
     // Update title in sidebar
     const historyItem = document.querySelector(`.history-item[data-id="${currentChatId}"]`);
     if (historyItem) {
-      historyItem.textContent = title;
+      const contentElement = historyItem.querySelector('.history-item-content');
+      if (contentElement) {
+        contentElement.textContent = title;
+      } else {
+        historyItem.textContent = title;
+      }
     }
     
   } catch (error) {
