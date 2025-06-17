@@ -13,6 +13,7 @@ const welcomeScreen = document.getElementById("welcome-screen");
 const chatHistoryContainer = document.getElementById("chat-history");
 const sidebar = document.getElementById("sidebar");
 const menuToggle = document.getElementById("menu-toggle");
+const sidebarToggle = document.getElementById("sidebar-toggle");
 const themeToggle = document.getElementById("theme-toggle");
 
 // Theme handling
@@ -75,32 +76,42 @@ function initSidebarState() {
 window.addEventListener('load', initSidebarState);
 window.addEventListener('resize', initSidebarState);
 
+// Toggle sidebar function
+function toggleSidebar() {
+  sidebar.classList.toggle("collapsed");
+  document.querySelector(".main-content").classList.toggle("full-width");
+  
+  // Adjust icon direction
+  const icon = sidebarToggle.querySelector('i');
+  if (sidebar.classList.contains('collapsed')) {
+    icon.classList.remove('fa-chevron-left');
+    icon.classList.add('fa-chevron-right');
+  } else {
+    icon.classList.remove('fa-chevron-right');
+    icon.classList.add('fa-chevron-left');
+  }
+}
+
 // Mobile menu toggle
 if (menuToggle) {
-  menuToggle.addEventListener("click", () => {
-    sidebar.classList.toggle("collapsed");
-    document.querySelector(".main-content").classList.toggle("full-width");
-  });
-  
-  // Close sidebar when clicking outside on mobile
-  document.addEventListener("click", (e) => {
-    if (window.innerWidth <= 900 && 
-        !sidebar.classList.contains("collapsed") && 
-        !sidebar.contains(e.target) && 
-        e.target !== menuToggle) {
-      sidebar.classList.add("collapsed");
-      document.querySelector(".main-content").classList.add("full-width");
-    }
+  menuToggle.addEventListener("click", (e) => {
+    e.stopPropagation(); // Prevent this click from triggering the document listener
+    toggleSidebar();
   });
 }
 
-// Make sidebar clickable to toggle
-sidebar.addEventListener("click", (e) => {
-  // Toggle if clicking on the sidebar itself, the before or after pseudo-elements
-  if (e.target === sidebar || 
-      e.clientX > sidebar.getBoundingClientRect().right - 24) {
-    sidebar.classList.toggle("collapsed");
-    document.querySelector(".main-content").classList.toggle("full-width");
+// Sidebar toggle button (for desktop)
+if (sidebarToggle) {
+  sidebarToggle.addEventListener('click', toggleSidebar);
+}
+
+// Close sidebar when clicking outside on mobile
+document.addEventListener("click", (e) => {
+  if (window.innerWidth <= 900 && 
+      !sidebar.classList.contains("collapsed") && 
+      !sidebar.contains(e.target) && 
+      !menuToggle.contains(e.target)) { // Ensure not clicking the menu toggle
+    toggleSidebar();
   }
 });
 
