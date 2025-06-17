@@ -456,11 +456,11 @@ body {
   animation: fadeIn 0.3s ease-out;
 }
 
-.user-message {
+.bot-message {
   align-self: flex-start;
 }
 
-.bot-message {
+.user-message {
   align-self: flex-end;
   flex-direction: row-reverse;
 }
@@ -507,14 +507,14 @@ body {
   border-radius: 12px;
 }
 
-.user-message .message-content {
-  color: #e0e0e0;
+.bot-message .message-content {
+  color: #f0f0f0;
   background-color: var(--message-bg);
   border-top-left-radius: 4px;
 }
 
-.bot-message .message-content {
-  color: #f0f0f0;
+.user-message .message-content {
+  color: #e0e0e0;
   background-color: var(--primary-light);
   border-top-right-radius: 4px;
 }
