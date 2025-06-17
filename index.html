@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MathBot - Powered by Google Gemini</title>
+  <title>Math Assistant</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,30 +13,116 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-header">
-      <h2><i class="fas fa-square-root-alt"></i> MathBot</h2>
-      <p>Powered by Gemini 2.0 Flash</p>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">
+      <span>Math Assistant</span>
+      <button class="copy-btn" title="Copy">
+        <i class="far fa-copy"></i>
+      </button>
     </div>
     
-    <div id="chat-box">
-      <div class="bot-message">
-        <div class="avatar">🧮</div>
-        <div class="message-content">
-          Hello! I'm your math assistant powered by Gemini 2.0 Flash. Ask me any math problem and I'll solve it for you.
-        </div>
+    <button class="new-chat-btn">
+      <i class="fas fa-plus"></i>
+      New chat
+    </button>
+    
+    <div class="chat-history" id="chat-history">
+      <!-- Chat history will be populated dynamically from Firestore -->
+      <div class="loading-history">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
       </div>
     </div>
     
-    <div class="input-area">
-      <input type="text" id="user-input" placeholder="Type a math problem (e.g., 'Integrate x^2 dx')..." />
-      <button id="send-btn" onclick="sendQuestion()">
-        <i class="fas fa-paper-plane"></i>
-      </button>
+    <button class="app-button">
+      <i class="fas fa-mobile-alt"></i>
+      Get App
+      <span class="badge">NEW</span>
+    </button>
+    
+    <div class="user-profile">
+      <div class="user-avatar">
+        <i class="fas fa-user"></i>
+      </div>
+      <span>My Profile</span>
+    </div>
+  </div>
+  
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="chat-container">
+      <!-- Welcome screen when no messages -->
+      <div class="welcome-container" id="welcome-screen">
+        <div class="welcome-avatar">
+          <i class="fas fa-square-root-alt"></i>
+        </div>
+        <h1 class="welcome-title">Hi, I'm Math Assistant.</h1>
+        <p class="welcome-subtitle">How can I help you with mathematics today?</p>
+      </div>
+      
+      <!-- Chat messages -->
+      <div id="chat-box" style="display: none;">
+        <!-- Messages will be added here by JavaScript -->
+      </div>
+      
+      <!-- Input area -->
+      <div class="input-area">
+        <div class="model-buttons">
+          <button class="model-button active">
+            <i class="fas fa-calculator"></i>
+            Math Expert
+          </button>
+        </div>
+        
+        <div class="input-container">
+          <textarea id="user-input" placeholder="Ask me any math question..." rows="1"></textarea>
+          <div class="input-buttons">
+            <button class="action-button" title="Attach files">
+              <i class="fas fa-paperclip"></i>
+            </button>
+            <button id="send-btn" title="Send message">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="footer">
+        AI-generated, for reference only
+      </div>
     </div>
   </div>
   
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <!-- Firebase SDK -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+    
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBiYV6Or5qxAdqXcPgInRRwxbwnEHdzOjc",
+      authDomain: "math-assistant-2c90a.firebaseapp.com",
+      projectId: "math-assistant-2c90a",
+      storageBucket: "math-assistant-2c90a.firebasestorage.app",
+      messagingSenderId: "422435777202",
+      appId: "1:422435777202:web:0667e26f5f532325d6b7ab",
+      measurementId: "G-8BK4L8LYVX"
+    };
+  
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    
+    // Export Firestore for use in script.js
+    window.db = getFirestore(app);
+  </script>
+  
   <script src="script.js"></script>
 </body>
 </html> 

@@ -5,12 +5,30 @@ const API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-
 // DOM Elements
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
-const sendButton = document.getElementById("send-btn");
+const sendBtn = document.getElementById("send-btn");
+const welcomeScreen = document.getElementById("welcome-screen");
+const chatHistoryContainer = document.getElementById("chat-history");
 
 // Add event listener for Enter key
 userInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault(); // Prevent default to avoid new line
     sendQuestion();
+  }
+});
+
+// Add click event for send button
+sendBtn.addEventListener("click", sendQuestion);
+
+// Auto-resize textarea
+userInput.addEventListener("input", function() {
+  this.style.height = "auto";
+  this.style.height = (this.scrollHeight) + "px";
+  // Limit max height
+  if (this.scrollHeight > 200) {
+    this.style.overflowY = "auto";
+  } else {
+    this.style.overflowY = "hidden";
   }
 });
 
@@ -19,18 +37,287 @@ let chatHistory = [
   { role: "system", content: "You are a math expert assistant. Only respond to math-related questions. For non-math questions, politely redirect the conversation to mathematics. Always format your answers using LaTeX for equations when appropriate. Be concise but thorough in your explanations." }
 ];
 
+// Current chat ID
+let currentChatId = null;
+
 // Backoff parameters
 let retryCount = 0;
 const MAX_RETRIES = 5;
 const INITIAL_BACKOFF_MS = 1000; // 1 second
+
+// Initialize Firestore references
+let chatsCollection;
+
+// Wait for Firebase to initialize
+document.addEventListener('DOMContentLoaded', async () => {
+  // Wait for Firebase to be available
+  await waitForFirebase();
+  
+  // Initialize Firestore references
+  chatsCollection = window.db.collection('chats');
+  
+  // Load chat history
+  loadChatHistory();
+  
+  // Create a new chat if none exists
+  if (!currentChatId) {
+    createNewChat();
+  }
+});
+
+// Wait for Firebase to initialize
+function waitForFirebase() {
+  return new Promise((resolve) => {
+    const checkFirebase = () => {
+      if (window.db) {
+        resolve();
+      } else {
+        setTimeout(checkFirebase, 100);
+      }
+    };
+    checkFirebase();
+  });
+}
+
+// Load chat history from Firestore
+async function loadChatHistory() {
+  try {
+    // Clear loading indicator
+    chatHistoryContainer.innerHTML = '';
+    
+    // Get chats ordered by last updated timestamp
+    const snapshot = await chatsCollection.orderBy('updatedAt', 'desc').get();
+    
+    if (snapshot.empty) {
+      // No chats found, create a new one
+      createNewChat();
+      return;
+    }
+    
+    // Group chats by date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    
+    const lastMonth = new Date(today);
+    lastMonth.setDate(lastMonth.getDate() - 30);
+    
+    let todayChats = [];
+    let yesterdayChats = [];
+    let weekChats = [];
+    let monthChats = [];
+    let olderChats = [];
+    
+    snapshot.forEach(doc => {
+      const chat = doc.data();
+      const chatDate = chat.updatedAt.toDate();
+      
+      // Add chat to appropriate group
+      if (chatDate >= today) {
+        todayChats.push({ id: doc.id, ...chat });
+      } else if (chatDate >= yesterday) {
+        yesterdayChats.push({ id: doc.id, ...chat });
+      } else if (chatDate >= lastWeek) {
+        weekChats.push({ id: doc.id, ...chat });
+      } else if (chatDate >= lastMonth) {
+        monthChats.push({ id: doc.id, ...chat });
+      } else {
+        olderChats.push({ id: doc.id, ...chat });
+      }
+    });
+    
+    // Add chats to sidebar
+    if (todayChats.length > 0) {
+      addChatSection('Today', todayChats);
+    }
+    
+    if (yesterdayChats.length > 0) {
+      addChatSection('Yesterday', yesterdayChats);
+    }
+    
+    if (weekChats.length > 0) {
+      addChatSection('7 Days', weekChats);
+    }
+    
+    if (monthChats.length > 0) {
+      addChatSection('30 Days', monthChats);
+    }
+    
+    if (olderChats.length > 0) {
+      addChatSection('Older', olderChats);
+    }
+    
+    // Set current chat to the most recent one
+    if (todayChats.length > 0) {
+      setCurrentChat(todayChats[0].id);
+    } else if (yesterdayChats.length > 0) {
+      setCurrentChat(yesterdayChats[0].id);
+    } else if (weekChats.length > 0) {
+      setCurrentChat(weekChats[0].id);
+    } else if (monthChats.length > 0) {
+      setCurrentChat(monthChats[0].id);
+    } else if (olderChats.length > 0) {
+      setCurrentChat(olderChats[0].id);
+    }
+    
+  } catch (error) {
+    console.error("Error loading chat history:", error);
+    // Show error in chat history
+    chatHistoryContainer.innerHTML = `
+      <div class="history-error">
+        Failed to load chat history.
+        <button class="retry-btn">Retry</button>
+      </div>
+    `;
+    
+    // Add retry button event listener
+    document.querySelector('.retry-btn').addEventListener('click', loadChatHistory);
+  }
+}
+
+// Add a section of chats to the sidebar
+function addChatSection(title, chats) {
+  const section = document.createElement('div');
+  section.className = 'history-section';
+  
+  const header = document.createElement('div');
+  header.className = 'history-header';
+  header.textContent = title;
+  
+  section.appendChild(header);
+  
+  chats.forEach(chat => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.dataset.id = chat.id;
+    item.textContent = chat.title || 'New Chat';
+    
+    // Add click event
+    item.addEventListener('click', () => {
+      setCurrentChat(chat.id);
+    });
+    
+    section.appendChild(item);
+  });
+  
+  chatHistoryContainer.appendChild(section);
+}
+
+// Set current chat
+async function setCurrentChat(chatId) {
+  try {
+    // Set current chat ID
+    currentChatId = chatId;
+    
+    // Highlight current chat in sidebar
+    document.querySelectorAll('.history-item').forEach(item => {
+      if (item.dataset.id === chatId) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+    
+    // Get chat data
+    const chatDoc = await chatsCollection.doc(chatId).get();
+    
+    if (!chatDoc.exists) {
+      console.error("Chat not found");
+      return;
+    }
+    
+    const chat = chatDoc.data();
+    
+    // Reset chat history
+    chatHistory = [
+      { role: "system", content: "You are a math expert assistant. Only respond to math-related questions. For non-math questions, politely redirect the conversation to mathematics. Always format your answers using LaTeX for equations when appropriate. Be concise but thorough in your explanations." }
+    ];
+    
+    // Clear chat box
+    chatBox.innerHTML = '';
+    
+    // Hide welcome screen if visible
+    welcomeScreen.style.display = "none";
+    chatBox.style.display = "flex";
+    
+    // Load messages
+    if (chat.messages && chat.messages.length > 0) {
+      // Add messages to chat history
+      chat.messages.forEach(message => {
+        chatHistory.push(message);
+        
+        // Add message to UI
+        if (message.role !== 'system') {
+          addMessageToChat(message.role, message.content);
+        }
+      });
+      
+      // Render math expressions
+      renderMathExpressions();
+    } else {
+      // No messages, show welcome screen
+      welcomeScreen.style.display = "flex";
+      chatBox.style.display = "none";
+    }
+    
+  } catch (error) {
+    console.error("Error setting current chat:", error);
+  }
+}
+
+// Create a new chat
+async function createNewChat() {
+  try {
+    // Create new chat document
+    const chatRef = await chatsCollection.add({
+      title: 'New Chat',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      messages: []
+    });
+    
+    // Set current chat ID
+    currentChatId = chatRef.id;
+    
+    // Reset chat history
+    chatHistory = [
+      { role: "system", content: "You are a math expert assistant. Only respond to math-related questions. For non-math questions, politely redirect the conversation to mathematics. Always format your answers using LaTeX for equations when appropriate. Be concise but thorough in your explanations." }
+    ];
+    
+    // Clear chat box
+    chatBox.innerHTML = '';
+    
+    // Show welcome screen
+    welcomeScreen.style.display = "flex";
+    chatBox.style.display = "none";
+    
+    // Reload chat history in sidebar
+    loadChatHistory();
+    
+  } catch (error) {
+    console.error("Error creating new chat:", error);
+  }
+}
 
 // Function to send questions to the API
 async function sendQuestion() {
   const question = userInput.value.trim();
   if (!question) return;
 
+  // Hide welcome screen if visible
+  if (welcomeScreen.style.display !== "none") {
+    welcomeScreen.style.display = "none";
+    chatBox.style.display = "flex";
+  }
+
   // Clear input field
   userInput.value = "";
+  userInput.style.height = "auto";
   
   // Add user message to chat
   addMessageToChat("user", question);
@@ -41,10 +328,63 @@ async function sendQuestion() {
   // Add to chat history for UI
   chatHistory.push({ role: "user", content: question });
   
+  // Update chat title if this is the first message
+  if (chatHistory.length === 2) { // system message + first user message
+    updateChatTitle(question);
+  }
+  
+  // Save message to Firestore
+  await saveChatMessage({ role: "user", content: question });
+  
   // Reset retry count for new question
   retryCount = 0;
   
   await sendRequestWithBackoff(question);
+}
+
+// Update chat title based on first message
+async function updateChatTitle(message) {
+  try {
+    // Use first 30 characters of message as title
+    const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
+    
+    // Update chat title in Firestore
+    await chatsCollection.doc(currentChatId).update({
+      title: title,
+      updatedAt: new Date()
+    });
+    
+    // Update title in sidebar
+    const historyItem = document.querySelector(`.history-item[data-id="${currentChatId}"]`);
+    if (historyItem) {
+      historyItem.textContent = title;
+    }
+    
+  } catch (error) {
+    console.error("Error updating chat title:", error);
+  }
+}
+
+// Save chat message to Firestore
+async function saveChatMessage(message) {
+  try {
+    // Get current messages
+    const chatDoc = await chatsCollection.doc(currentChatId).get();
+    const chat = chatDoc.data();
+    
+    // Add message to messages array
+    const messages = chat.messages || [];
+    messages.push(message);
+    
+    // Update chat document
+    await chatsCollection.doc(currentChatId).update({
+      messages: messages,
+      updatedAt: new Date()
+    });
+    
+  } catch (error) {
+    console.error("Error saving chat message:", error);
+  }
 }
 
 // Function to send API request with exponential backoff
@@ -95,6 +435,9 @@ async function sendRequestWithBackoff(question) {
     // Add to chat history
     chatHistory.push({ role: "assistant", content: reply });
     
+    // Save message to Firestore
+    await saveChatMessage({ role: "assistant", content: reply });
+    
     // Render any math expressions
     renderMathExpressions();
     
@@ -120,6 +463,9 @@ async function sendRequestWithBackoff(question) {
     
     // Show error message
     addMessageToChat("bot", "Sorry, I encountered an error. Please try again in a moment.");
+    
+    // Save error message to Firestore
+    await saveChatMessage({ role: "assistant", content: "Sorry, I encountered an error. Please try again in a moment." });
   }
 }
 
@@ -160,7 +506,12 @@ function addMessageToChat(role, content) {
   
   const avatar = document.createElement("div");
   avatar.className = "avatar";
-  avatar.textContent = role === "user" ? "👤" : "🧮";
+  
+  if (role === "user") {
+    avatar.innerHTML = '<i class="fas fa-user"></i>';
+  } else {
+    avatar.innerHTML = '<i class="fas fa-square-root-alt"></i>';
+  }
   
   const messageContent = document.createElement("div");
   messageContent.className = "message-content";
@@ -226,7 +577,11 @@ function showLoading() {
   
   const avatar = document.createElement("div");
   avatar.className = "avatar";
-  avatar.textContent = "🧮";
+  avatar.innerHTML = '<i class="fas fa-square-root-alt"></i>';
+  
+  const messageContent = document.createElement("div");
+  messageContent.className = "message-content";
+  messageContent.textContent = "Calculating...";
   
   const loadingIndicator = document.createElement("div");
   loadingIndicator.className = "loading-indicator";
@@ -236,10 +591,6 @@ function showLoading() {
     dot.className = "dot";
     loadingIndicator.appendChild(dot);
   }
-  
-  const messageContent = document.createElement("div");
-  messageContent.className = "message-content";
-  messageContent.textContent = "Thinking...";
   
   loadingDiv.appendChild(avatar);
   loadingDiv.appendChild(messageContent);
@@ -261,6 +612,12 @@ function removeLoading() {
 function scrollToBottom() {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+// Add event listener for new chat button
+document.querySelector('.new-chat-btn').addEventListener('click', () => {
+  // Create a new chat
+  createNewChat();
+});
 
 // First-time focus on input field
 window.onload = () => {
