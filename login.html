@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Math Assistant</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="auth-body">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <i class="fas fa-square-root-alt"></i>
+          <h1>Math Assistant</h1>
+        </div>
+        <p class="auth-subtitle">Sign in to continue</p>
+      </div>
+
+      <div class="auth-form">
+        <div class="auth-error" id="auth-error" style="display: none;"></div>
+        
+        <div class="input-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="your@email.com">
+        </div>
+        
+        <div class="input-group">
+          <label for="password">Password</label>
+          <div class="password-input">
+            <input type="password" id="password" placeholder="••••••••">
+            <button type="button" class="toggle-password" title="Show/Hide Password">
+              <i class="far fa-eye"></i>
+            </button>
+          </div>
+          <div class="forgot-password">
+            <a href="#" id="forgot-password">Forgot password?</a>
+          </div>
+        </div>
+        
+        <button type="button" id="login-btn" class="auth-button">
+          <span>Sign In</span>
+          <div class="button-loader" style="display: none;">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </button>
+        
+        <div class="auth-footer">
+          <p>Don't have an account? <a href="signup.html">Sign Up</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Firebase SDK -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+    import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+    
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBiYV6Or5qxAdqXcPgInRRwxbwnEHdzOjc",
+      authDomain: "math-assistant-2c90a.firebaseapp.com",
+      projectId: "math-assistant-2c90a",
+      storageBucket: "math-assistant-2c90a.firebasestorage.app",
+      messagingSenderId: "422435777202",
+      appId: "1:422435777202:web:0667e26f5f532325d6b7ab",
+      measurementId: "G-8BK4L8LYVX"
+    };
+  
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    
+    // DOM Elements
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('login-btn');
+    const forgotPasswordLink = document.getElementById('forgot-password');
+    const authError = document.getElementById('auth-error');
+    const togglePasswordBtn = document.querySelector('.toggle-password');
+    
+    // Show/Hide Password
+    togglePasswordBtn.addEventListener('click', () => {
+      const passwordField = document.getElementById('password');
+      const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordField.setAttribute('type', type);
+      
+      // Toggle icon
+      const icon = togglePasswordBtn.querySelector('i');
+      icon.classList.toggle('fa-eye');
+      icon.classList.toggle('fa-eye-slash');
+    });
+    
+    // Email/Password Login
+    loginBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      
+      // Validate inputs
+      if (!email || !password) {
+        showError('Please enter both email and password.');
+        return;
+      }
+      
+      // Show loading state
+      setLoading(true);
+      
+      try {
+        // Sign in with email and password
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // Redirect to the main app
+        window.location.href = 'index.html';
+      } catch (error) {
+        console.error('Login error:', error);
+        
+        // Handle specific error codes
+        switch (error.code) {
+          case 'auth/invalid-credential':
+            showError('Invalid email or password. Please try again.');
+            break;
+          case 'auth/user-disabled':
+            showError('This account has been disabled. Please contact support.');
+            break;
+          case 'auth/too-many-requests':
+            showError('Too many failed login attempts. Please try again later.');
+            break;
+          default:
+            showError('Failed to sign in. Please try again.');
+        }
+        
+        setLoading(false);
+      }
+    });
+    
+    // Forgot Password
+    forgotPasswordLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      
+      const email = emailInput.value.trim();
+      if (!email) {
+        showError('Please enter your email address to reset your password.');
+        emailInput.focus();
+        return;
+      }
+      
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showSuccess('Password reset email sent. Please check your inbox.');
+      } catch (error) {
+        console.error('Password reset error:', error);
+        showError('Failed to send password reset email. Please check your email address.');
+      }
+    });
+    
+    // Check if user is already logged in
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in, redirect to the main app
+        window.location.href = 'index.html';
+      }
+    });
+    
+    // Helper functions
+    function showError(message) {
+      authError.textContent = message;
+      authError.style.display = 'block';
+      
+      // Hide after 5 seconds
+      setTimeout(() => {
+        authError.style.display = 'none';
+      }, 5000);
+    }
+    
+    function showSuccess(message) {
+      authError.textContent = message;
+      authError.style.display = 'block';
+      authError.classList.add('auth-success');
+      
+      // Hide after 5 seconds
+      setTimeout(() => {
+        authError.style.display = 'none';
+        authError.classList.remove('auth-success');
+      }, 5000);
+    }
+    
+    function setLoading(isLoading) {
+      const buttonText = loginBtn.querySelector('span');
+      const buttonLoader = loginBtn.querySelector('.button-loader');
+      
+      if (isLoading) {
+        buttonText.style.display = 'none';
+        buttonLoader.style.display = 'flex';
+        loginBtn.disabled = true;
+      } else {
+        buttonText.style.display = 'block';
+        buttonLoader.style.display = 'none';
+        loginBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html> 

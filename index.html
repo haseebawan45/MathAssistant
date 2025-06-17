@@ -35,6 +35,23 @@
         <div class="dot"></div>
       </div>
     </div>
+    
+    <div class="user-profile" id="user-profile">
+      <div class="user-avatar">
+        <i class="fas fa-user"></i>
+      </div>
+      <span class="user-name">Loading...</span>
+      <div class="user-menu">
+        <button class="user-menu-btn">
+          <i class="fas fa-ellipsis-v"></i>
+        </button>
+        <div class="user-menu-dropdown">
+          <a href="#" id="profile-link">Profile</a>
+          <a href="#" id="settings-link">Settings</a>
+          <a href="#" id="logout-link">Sign out</a>
+        </div>
+      </div>
+    </div>
   </div>
   
   <!-- Main Content -->
@@ -92,6 +109,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
     import { getFirestore } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
     
     // Your web app's Firebase configuration
     const firebaseConfig = {
@@ -107,9 +125,71 @@
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
     
-    // Export Firestore for use in script.js
-    window.db = getFirestore(app);
+    // Export for use in script.js
+    window.db = db;
+    window.auth = auth;
+    
+    // Check authentication state
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is signed in
+        console.log("User is signed in:", user.displayName);
+        updateUserProfile(user);
+      } else {
+        // User is signed out
+        console.log("User is signed out");
+        window.location.href = 'login.html';
+      }
+    });
+    
+    // Update user profile in sidebar
+    function updateUserProfile(user) {
+      const userAvatar = document.querySelector('#user-profile .user-avatar');
+      const userName = document.querySelector('#user-profile .user-name');
+      
+      if (user.photoURL) {
+        userAvatar.innerHTML = `<img src="${user.photoURL}" alt="${user.displayName}" />`;
+      } else {
+        // Use first letter of display name
+        const initial = user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U';
+        userAvatar.innerHTML = initial;
+      }
+      
+      userName.textContent = user.displayName || user.email;
+    }
+    
+    // User menu toggle
+    const userMenuBtn = document.querySelector('.user-menu-btn');
+    const userMenuDropdown = document.querySelector('.user-menu-dropdown');
+    
+    if (userMenuBtn) {
+      userMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        userMenuDropdown.classList.toggle('active');
+      });
+      
+      // Close menu when clicking outside
+      document.addEventListener('click', () => {
+        userMenuDropdown.classList.remove('active');
+      });
+    }
+    
+    // Logout functionality
+    const logoutLink = document.getElementById('logout-link');
+    if (logoutLink) {
+      logoutLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+          await signOut(auth);
+          // Redirect is handled by onAuthStateChanged
+        } catch (error) {
+          console.error("Error signing out:", error);
+        }
+      });
+    }
   </script>
   
   <script src="script.js"></script>

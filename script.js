@@ -58,6 +58,7 @@ let chatHistory = [
 
 // Current chat ID
 let currentChatId = null;
+let currentUser = null;
 
 // Backoff parameters
 let retryCount = 0;
@@ -66,6 +67,7 @@ const INITIAL_BACKOFF_MS = 1000; // 1 second
 
 // Initialize Firestore references
 let chatsCollection;
+let userChatsCollection;
 
 // Wait for Firebase to initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -85,23 +87,35 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Wait for Firebase to be available
   await waitForFirebase();
   
-  // Initialize Firestore references
-  chatsCollection = window.db.collection('chats');
-  
-  // Load chat history
-  loadChatHistory();
-  
-  // Create a new chat if none exists
-  if (!currentChatId) {
-    createNewChat();
-  }
+  // Check authentication
+  window.auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      // User is signed in
+      currentUser = user;
+      
+      // Initialize Firestore references
+      chatsCollection = window.db.collection('chats');
+      userChatsCollection = window.db.collection('users').doc(user.uid).collection('chats');
+      
+      // Load chat history
+      loadChatHistory();
+      
+      // Create a new chat if none exists
+      if (!currentChatId) {
+        createNewChat();
+      }
+    } else {
+      // User is signed out, redirect to login page
+      window.location.href = 'login.html';
+    }
+  });
 });
 
 // Wait for Firebase to initialize
 function waitForFirebase() {
   return new Promise((resolve) => {
     const checkFirebase = () => {
-      if (window.db) {
+      if (window.db && window.auth) {
         resolve();
       } else {
         setTimeout(checkFirebase, 100);
@@ -124,7 +138,7 @@ async function loadChatHistory() {
     `;
     
     // Get chats ordered by last updated timestamp
-    const snapshot = await chatsCollection.orderBy('updatedAt', 'desc').get();
+    const snapshot = await userChatsCollection.orderBy('updatedAt', 'desc').get();
     
     // Clear loading indicator
     chatHistoryContainer.innerHTML = '';
@@ -339,12 +353,26 @@ async function setCurrentChat(chatId) {
 // Create a new chat
 async function createNewChat() {
   try {
-    // Create new chat document
+    if (!currentUser) {
+      console.error("No user signed in");
+      return;
+    }
+    
+    // Create new chat document in main chats collection
     const chatRef = await chatsCollection.add({
       title: 'New Chat',
       createdAt: new Date(),
       updatedAt: new Date(),
+      userId: currentUser.uid,
       messages: []
+    });
+    
+    // Add reference to user's chats collection
+    await userChatsCollection.doc(chatRef.id).set({
+      chatId: chatRef.id,
+      title: 'New Chat',
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
     
     // Set current chat ID
@@ -389,6 +417,12 @@ async function sendQuestion() {
   const question = userInput.value.trim();
   if (!question) return;
 
+  // Check if user is authenticated
+  if (!currentUser || !currentChatId) {
+    showNotification('Please sign in to continue', 'error');
+    return;
+  }
+
   // Hide welcome screen if visible
   if (welcomeScreen.style.display !== "none") {
     welcomeScreen.style.display = "none";
@@ -428,8 +462,14 @@ async function updateChatTitle(message) {
     // Use first 30 characters of message as title
     const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
     
-    // Update chat title in Firestore
+    // Update chat title in main chats collection
     await chatsCollection.doc(currentChatId).update({
+      title: title,
+      updatedAt: new Date()
+    });
+    
+    // Update chat title in user's chats collection
+    await userChatsCollection.doc(currentChatId).update({
       title: title,
       updatedAt: new Date()
     });
@@ -456,14 +496,20 @@ async function saveChatMessage(message) {
     const messages = chat.messages || [];
     messages.push(message);
     
-    // Update chat document
+    // Update chat document in main chats collection
     await chatsCollection.doc(currentChatId).update({
       messages: messages,
       updatedAt: new Date()
     });
     
+    // Update last updated timestamp in user's chats collection
+    await userChatsCollection.doc(currentChatId).update({
+      updatedAt: new Date()
+    });
+    
   } catch (error) {
     console.error("Error saving chat message:", error);
+    showNotification('Failed to save message', 'error');
   }
 }
 
@@ -549,6 +595,19 @@ async function sendRequestWithBackoff(question) {
   }
 }
 
+// Show notification
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  // Remove notification after 3 seconds
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
 // Update loading message
 function updateLoadingMessage(message) {
   const loadingElement = document.querySelector(".loading .message-content");
@@ -588,7 +647,14 @@ function addMessageToChat(role, content) {
   avatar.className = "avatar";
   
   if (role === "user") {
-    avatar.innerHTML = '<i class="fas fa-user"></i>';
+    // Use user's profile photo or initial if available
+    if (currentUser && currentUser.photoURL) {
+      avatar.innerHTML = `<img src="${currentUser.photoURL}" alt="${currentUser.displayName || 'User'}" />`;
+    } else if (currentUser && currentUser.displayName) {
+      avatar.innerHTML = currentUser.displayName.charAt(0).toUpperCase();
+    } else {
+      avatar.innerHTML = '<i class="fas fa-user"></i>';
+    }
   } else {
     avatar.innerHTML = '<i class="fas fa-square-root-alt"></i>';
   }

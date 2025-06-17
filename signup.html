@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up - Math Assistant</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="auth-body">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <i class="fas fa-square-root-alt"></i>
+          <h1>Math Assistant</h1>
+        </div>
+        <p class="auth-subtitle">Create your account</p>
+      </div>
+
+      <div class="auth-form">
+        <div class="auth-error" id="auth-error" style="display: none;"></div>
+        
+        <div class="input-group">
+          <label for="name">Full Name</label>
+          <input type="text" id="name" placeholder="Your Name">
+        </div>
+        
+        <div class="input-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="your@email.com">
+        </div>
+        
+        <div class="input-group">
+          <label for="password">Password</label>
+          <div class="password-input">
+            <input type="password" id="password" placeholder="••••••••">
+            <button type="button" class="toggle-password" title="Show/Hide Password">
+              <i class="far fa-eye"></i>
+            </button>
+          </div>
+          <div class="password-strength" id="password-strength">
+            <div class="strength-meter">
+              <div class="strength-segment"></div>
+              <div class="strength-segment"></div>
+              <div class="strength-segment"></div>
+              <div class="strength-segment"></div>
+            </div>
+            <span class="strength-text">Password strength</span>
+          </div>
+        </div>
+        
+        <div class="input-group">
+          <label for="confirm-password">Confirm Password</label>
+          <div class="password-input">
+            <input type="password" id="confirm-password" placeholder="••••••••">
+          </div>
+        </div>
+        
+        <div class="terms-checkbox">
+          <input type="checkbox" id="terms">
+          <label for="terms">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+        </div>
+        
+        <button type="button" id="signup-btn" class="auth-button">
+          <span>Create Account</span>
+          <div class="button-loader" style="display: none;">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </button>
+        
+        <div class="auth-footer">
+          <p>Already have an account? <a href="login.html">Sign In</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Firebase SDK -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+    import { getAuth, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+    
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBiYV6Or5qxAdqXcPgInRRwxbwnEHdzOjc",
+      authDomain: "math-assistant-2c90a.firebaseapp.com",
+      projectId: "math-assistant-2c90a",
+      storageBucket: "math-assistant-2c90a.firebasestorage.app",
+      messagingSenderId: "422435777202",
+      appId: "1:422435777202:web:0667e26f5f532325d6b7ab",
+      measurementId: "G-8BK4L8LYVX"
+    };
+  
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    // DOM Elements
+    const nameInput = document.getElementById('name');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm-password');
+    const termsCheckbox = document.getElementById('terms');
+    const signupBtn = document.getElementById('signup-btn');
+    const authError = document.getElementById('auth-error');
+    const togglePasswordBtn = document.querySelector('.toggle-password');
+    const passwordStrength = document.getElementById('password-strength');
+    const strengthSegments = document.querySelectorAll('.strength-segment');
+    const strengthText = document.querySelector('.strength-text');
+    
+    // Show/Hide Password
+    togglePasswordBtn.addEventListener('click', () => {
+      const passwordField = document.getElementById('password');
+      const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordField.setAttribute('type', type);
+      
+      // Toggle icon
+      const icon = togglePasswordBtn.querySelector('i');
+      icon.classList.toggle('fa-eye');
+      icon.classList.toggle('fa-eye-slash');
+    });
+    
+    // Password strength meter
+    passwordInput.addEventListener('input', () => {
+      const password = passwordInput.value;
+      const strength = calculatePasswordStrength(password);
+      
+      // Update strength meter
+      updateStrengthMeter(strength);
+    });
+    
+    function calculatePasswordStrength(password) {
+      // Return 0-4 based on password strength
+      if (!password) return 0;
+      
+      let score = 0;
+      
+      // Length check
+      if (password.length >= 8) score++;
+      
+      // Contains lowercase
+      if (/[a-z]/.test(password)) score++;
+      
+      // Contains uppercase
+      if (/[A-Z]/.test(password)) score++;
+      
+      // Contains number or special char
+      if (/[0-9!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+      
+      return score;
+    }
+    
+    function updateStrengthMeter(strength) {
+      // Reset all segments
+      strengthSegments.forEach(segment => {
+        segment.className = 'strength-segment';
+      });
+      
+      // Set colors based on strength
+      for (let i = 0; i < strength; i++) {
+        if (strengthSegments[i]) {
+          strengthSegments[i].classList.add(getStrengthClass(strength));
+        }
+      }
+      
+      // Update text
+      strengthText.textContent = getStrengthText(strength);
+      strengthText.className = 'strength-text ' + getStrengthClass(strength);
+    }
+    
+    function getStrengthClass(strength) {
+      switch (strength) {
+        case 0: return 'strength-none';
+        case 1: return 'strength-weak';
+        case 2: return 'strength-fair';
+        case 3: return 'strength-good';
+        case 4: return 'strength-strong';
+        default: return '';
+      }
+    }
+    
+    function getStrengthText(strength) {
+      switch (strength) {
+        case 0: return 'No password';
+        case 1: return 'Weak';
+        case 2: return 'Fair';
+        case 3: return 'Good';
+        case 4: return 'Strong';
+        default: return 'Password strength';
+      }
+    }
+    
+    // Email/Password Signup
+    signupBtn.addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+      
+      // Validate inputs
+      if (!name) {
+        showError('Please enter your name.');
+        return;
+      }
+      
+      if (!email) {
+        showError('Please enter your email address.');
+        return;
+      }
+      
+      if (!password) {
+        showError('Please enter a password.');
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        showError('Passwords do not match.');
+        return;
+      }
+      
+      if (calculatePasswordStrength(password) < 3) {
+        showError('Please choose a stronger password.');
+        return;
+      }
+      
+      if (!termsCheckbox.checked) {
+        showError('You must agree to the Terms of Service and Privacy Policy.');
+        return;
+      }
+      
+      // Show loading state
+      setLoading(true);
+      
+      try {
+        // Create user with email and password
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Update profile with name
+        await updateProfile(user, {
+          displayName: name
+        });
+        
+        // Create user document in Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          name: name,
+          email: email,
+          createdAt: new Date(),
+          lastLogin: new Date()
+        });
+        
+        // Redirect to the main app
+        window.location.href = 'index.html';
+      } catch (error) {
+        console.error('Signup error:', error);
+        
+        // Handle specific error codes
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            showError('This email is already in use. Please try logging in instead.');
+            break;
+          case 'auth/invalid-email':
+            showError('Please enter a valid email address.');
+            break;
+          case 'auth/weak-password':
+            showError('Password is too weak. Please choose a stronger password.');
+            break;
+          default:
+            showError('Failed to create account. Please try again.');
+        }
+        
+        setLoading(false);
+      }
+    });
+    
+    // Check if user is already logged in
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in, redirect to the main app
+        window.location.href = 'index.html';
+      }
+    });
+    
+    // Helper functions
+    function showError(message) {
+      authError.textContent = message;
+      authError.style.display = 'block';
+      authError.classList.remove('auth-success');
+      
+      // Hide after 5 seconds
+      setTimeout(() => {
+        authError.style.display = 'none';
+      }, 5000);
+    }
+    
+    function showSuccess(message) {
+      authError.textContent = message;
+      authError.style.display = 'block';
+      authError.classList.add('auth-success');
+      
+      // Hide after 5 seconds
+      setTimeout(() => {
+        authError.style.display = 'none';
+        authError.classList.remove('auth-success');
+      }, 5000);
+    }
+    
+    function setLoading(isLoading) {
+      const buttonText = signupBtn.querySelector('span');
+      const buttonLoader = signupBtn.querySelector('.button-loader');
+      
+      if (isLoading) {
+        buttonText.style.display = 'none';
+        buttonLoader.style.display = 'flex';
+        signupBtn.disabled = true;
+      } else {
+        buttonText.style.display = 'block';
+        buttonLoader.style.display = 'none';
+        signupBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html> 

@@ -212,6 +212,110 @@ body {
   background-color: rgba(231, 76, 60, 0.1);
 }
 
+/* User Profile */
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color var(--transition-speed);
+}
+
+.user-profile:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.user-menu-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-color);
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background-color: var(--message-bg);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  width: 150px;
+  padding: 8px 0;
+  margin-bottom: 10px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all var(--transition-speed);
+  z-index: 100;
+}
+
+.user-menu-dropdown.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.user-menu-dropdown a {
+  display: block;
+  padding: 8px 16px;
+  color: var(--text-color);
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color var(--transition-speed);
+}
+
+.user-menu-dropdown a:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
 /* Main chat area */
 .main-content {
   flex: 1;
