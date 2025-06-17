@@ -2,6 +2,9 @@
 const API_KEY = "AIzaSyDT28ot1ZVsC0zkBkhDKZoTq3HnWbkjWV8";
 const API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
 
+// Import Firestore functions (these will be available after Firebase initializes)
+let getDocs, query, orderBy, doc, setDoc, Timestamp, getDoc, updateDoc;
+
 // DOM Elements
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
@@ -87,6 +90,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Wait for Firebase to be available
   await waitForFirebase();
   
+  // Import Firestore functions from Firebase module
+  const firestoreModule = await import("https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js");
+  getDocs = firestoreModule.getDocs;
+  query = firestoreModule.query;
+  orderBy = firestoreModule.orderBy;
+  doc = firestoreModule.doc;
+  setDoc = firestoreModule.setDoc;
+  Timestamp = firestoreModule.Timestamp;
+  getDoc = firestoreModule.getDoc;
+  updateDoc = firestoreModule.updateDoc;
+  
   // Check authentication
   window.auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -94,8 +108,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentUser = user;
       
       // Initialize Firestore references
-      chatsCollection = window.db.collection('chats');
-      userChatsCollection = window.db.collection('users').doc(user.uid).collection('chats');
+      chatsCollection = window.firestoreCollection(window.db, 'chats');
+      userChatsCollection = window.firestoreCollection(window.db, 'users', user.uid, 'chats');
       
       // Load chat history
       loadChatHistory();
@@ -115,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function waitForFirebase() {
   return new Promise((resolve) => {
     const checkFirebase = () => {
-      if (window.db && window.auth) {
+      if (window.db && window.auth && window.firestoreCollection) {
         resolve();
       } else {
         setTimeout(checkFirebase, 100);
@@ -138,7 +152,7 @@ async function loadChatHistory() {
     `;
     
     // Get chats ordered by last updated timestamp
-    const snapshot = await userChatsCollection.orderBy('updatedAt', 'desc').get();
+    const snapshot = await getDocs(query(userChatsCollection, orderBy('updatedAt', 'desc')));
     
     // Clear loading indicator
     chatHistoryContainer.innerHTML = '';
@@ -235,37 +249,33 @@ async function loadChatHistory() {
   }
 }
 
-// Add a section of chats to the sidebar
+// Add chat section to sidebar
 function addChatSection(title, chats) {
-  const section = document.createElement('div');
-  section.className = 'history-section';
+  // Create section header
+  const sectionHeader = document.createElement('div');
+  sectionHeader.className = 'history-section';
+  sectionHeader.textContent = title;
+  chatHistoryContainer.appendChild(sectionHeader);
   
-  const header = document.createElement('div');
-  header.className = 'history-header';
-  header.textContent = title;
-  
-  section.appendChild(header);
-  
+  // Create chat items
   chats.forEach(chat => {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    item.dataset.id = chat.id;
-    item.textContent = chat.title || 'New Chat';
+    const chatItem = document.createElement('div');
+    chatItem.className = 'history-item';
+    chatItem.dataset.id = chat.id;
+    chatItem.textContent = chat.title || 'New Chat';
     
     // Add click event
-    item.addEventListener('click', () => {
+    chatItem.addEventListener('click', () => {
       setCurrentChat(chat.id);
       
-      // Close sidebar on mobile after selection
+      // Close sidebar on mobile
       if (window.innerWidth <= 900) {
-        sidebar.classList.remove("open");
+        sidebar.classList.remove('open');
       }
     });
     
-    section.appendChild(item);
+    chatHistoryContainer.appendChild(chatItem);
   });
-  
-  chatHistoryContainer.appendChild(section);
 }
 
 // Set current chat
@@ -300,9 +310,10 @@ async function setCurrentChat(chatId) {
     chatBox.appendChild(loadingDiv);
     
     // Get chat data
-    const chatDoc = await chatsCollection.doc(chatId).get();
+    const chatDocRef = doc(window.db, 'chats', chatId);
+    const chatDoc = await getDoc(chatDocRef);
     
-    if (!chatDoc.exists) {
+    if (!chatDoc.exists()) {
       console.error("Chat not found");
       return;
     }
@@ -358,8 +369,12 @@ async function createNewChat() {
       return;
     }
     
-    // Create new chat document in main chats collection
-    const chatRef = await chatsCollection.add({
+    // Create new chat document with auto-generated ID
+    const newChatRef = doc(window.firestoreCollection(window.db, 'chats'));
+    const chatId = newChatRef.id;
+    
+    // Set chat data
+    await setDoc(newChatRef, {
       title: 'New Chat',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -368,15 +383,16 @@ async function createNewChat() {
     });
     
     // Add reference to user's chats collection
-    await userChatsCollection.doc(chatRef.id).set({
-      chatId: chatRef.id,
+    const userChatRef = doc(window.db, 'users', currentUser.uid, 'chats', chatId);
+    await setDoc(userChatRef, {
+      chatId: chatId,
       title: 'New Chat',
       createdAt: new Date(),
       updatedAt: new Date()
     });
     
     // Set current chat ID
-    currentChatId = chatRef.id;
+    currentChatId = chatId;
     
     // Reset chat history
     chatHistory = [
@@ -400,60 +416,96 @@ async function createNewChat() {
     console.error("Error creating new chat:", error);
     
     // Show error notification
-    const notification = document.createElement('div');
-    notification.className = 'notification error';
-    notification.textContent = 'Failed to create new chat.';
-    document.body.appendChild(notification);
-    
-    // Remove notification after 3 seconds
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
+    showNotification('Failed to create new chat.', 'error');
   }
 }
 
-// Function to send questions to the API
+// Function to send question to Gemini API
 async function sendQuestion() {
+  // Get user input and trim whitespace
   const question = userInput.value.trim();
-  if (!question) return;
-
-  // Check if user is authenticated
-  if (!currentUser || !currentChatId) {
+  
+  // Check if input is empty
+  if (question === "") return;
+  
+  // Check if user is signed in
+  if (!currentUser) {
     showNotification('Please sign in to continue', 'error');
+    window.location.href = 'login.html';
     return;
   }
-
-  // Hide welcome screen if visible
-  if (welcomeScreen.style.display !== "none") {
-    welcomeScreen.style.display = "none";
-    chatBox.style.display = "flex";
+  
+  // Check if we have a current chat ID
+  if (!currentChatId) {
+    // Create a new chat
+    await createNewChat();
   }
-
-  // Clear input field
+  
+  // Show chat box and hide welcome screen
+  welcomeScreen.style.display = "none";
+  chatBox.style.display = "flex";
+  
+  // Add user message to UI
+  addMessageToChat("user", question);
+  
+  // Clear input field and reset height
   userInput.value = "";
   userInput.style.height = "auto";
   
-  // Add user message to chat
-  addMessageToChat("user", question);
+  // Add user message to chat history
+  chatHistory.push({ role: "user", content: question });
+  
+  // Save user message to Firestore
+  await saveChatMessage({ role: "user", content: question });
+  
+  // Update chat title if this is the first message
+  const chatDocRef = doc(window.db, 'chats', currentChatId);
+  const chatDoc = await getDoc(chatDocRef);
+  if (chatDoc.exists()) {
+    const chat = chatDoc.data();
+    if (!chat.messages || chat.messages.length <= 1) {
+      updateChatTitle(question);
+    }
+  }
   
   // Show loading indicator
   showLoading();
   
-  // Add to chat history for UI
-  chatHistory.push({ role: "user", content: question });
-  
-  // Update chat title if this is the first message
-  if (chatHistory.length === 2) { // system message + first user message
-    updateChatTitle(question);
-  }
-  
-  // Save message to Firestore
-  await saveChatMessage({ role: "user", content: question });
-  
-  // Reset retry count for new question
+  // Reset retry count for this new request
   retryCount = 0;
   
-  await sendRequestWithBackoff(question);
+  try {
+    // Send request to Gemini API
+    const response = await sendRequestWithBackoff(question);
+    
+    // Process and display the response
+    removeLoading();
+    addMessageToChat("bot", response);
+    
+    // Add bot message to chat history
+    chatHistory.push({ role: "assistant", content: response });
+    
+    // Save bot message to Firestore
+    await saveChatMessage({ role: "assistant", content: response });
+    
+    // Render math expressions
+    renderMathExpressions();
+    
+  } catch (error) {
+    console.error("Error getting response:", error);
+    
+    // Remove loading indicator
+    removeLoading();
+    
+    // Show error message
+    addMessageToChat("bot", "Sorry, I couldn't process your question. Please try again.");
+    
+    // Add error message to chat history
+    chatHistory.push({ role: "assistant", content: "Sorry, I couldn't process your question. Please try again." });
+    
+    // Save error message to Firestore
+    await saveChatMessage({ role: "assistant", content: "Sorry, I couldn't process your question. Please try again." });
+  }
 }
 
 // Update chat title based on first message
@@ -463,13 +515,15 @@ async function updateChatTitle(message) {
     const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
     
     // Update chat title in main chats collection
-    await chatsCollection.doc(currentChatId).update({
+    const chatDocRef = doc(window.db, 'chats', currentChatId);
+    await updateDoc(chatDocRef, {
       title: title,
       updatedAt: new Date()
     });
     
     // Update chat title in user's chats collection
-    await userChatsCollection.doc(currentChatId).update({
+    const userChatRef = doc(window.db, 'users', currentUser.uid, 'chats', currentChatId);
+    await updateDoc(userChatRef, {
       title: title,
       updatedAt: new Date()
     });
@@ -489,7 +543,13 @@ async function updateChatTitle(message) {
 async function saveChatMessage(message) {
   try {
     // Get current messages
-    const chatDoc = await chatsCollection.doc(currentChatId).get();
+    const chatDocRef = doc(window.db, 'chats', currentChatId);
+    const chatDoc = await getDoc(chatDocRef);
+    
+    if (!chatDoc.exists()) {
+      throw new Error("Chat not found");
+    }
+    
     const chat = chatDoc.data();
     
     // Add message to messages array
@@ -497,13 +557,14 @@ async function saveChatMessage(message) {
     messages.push(message);
     
     // Update chat document in main chats collection
-    await chatsCollection.doc(currentChatId).update({
+    await updateDoc(chatDocRef, {
       messages: messages,
       updatedAt: new Date()
     });
     
     // Update last updated timestamp in user's chats collection
-    await userChatsCollection.doc(currentChatId).update({
+    const userChatRef = doc(window.db, 'users', currentUser.uid, 'chats', currentChatId);
+    await updateDoc(userChatRef, {
       updatedAt: new Date()
     });
     
@@ -552,21 +613,10 @@ async function sendRequestWithBackoff(question) {
     // Get bot reply
     const reply = data.candidates[0].content.parts[0].text;
     
-    // Remove loading indicator
-    removeLoading();
+    // Reset retry count on success
+    retryCount = 0;
     
-    // Add bot message to chat
-    addMessageToChat("bot", reply);
-    
-    // Add to chat history
-    chatHistory.push({ role: "assistant", content: reply });
-    
-    // Save message to Firestore
-    await saveChatMessage({ role: "assistant", content: reply });
-    
-    // Render any math expressions
-    renderMathExpressions();
-    
+    return reply;
   } catch (error) {
     console.error("API Error:", error);
     
@@ -580,18 +630,15 @@ async function sendRequestWithBackoff(question) {
       updateLoadingMessage(`Rate limit hit. Retrying in ${backoffTime/1000} seconds... (Attempt ${retryCount} of ${MAX_RETRIES})`);
       
       // Wait and retry
-      setTimeout(() => sendRequestWithBackoff(question), backoffTime);
-      return;
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve(sendRequestWithBackoff(question));
+        }, backoffTime);
+      });
     }
     
-    // Remove loading indicator
-    removeLoading();
-    
-    // Show error message
-    addMessageToChat("bot", "Sorry, I encountered an error. Please try again in a moment.");
-    
-    // Save error message to Firestore
-    await saveChatMessage({ role: "assistant", content: "Sorry, I encountered an error. Please try again in a moment." });
+    // If we've exhausted retries or it's another error, throw it up to the caller
+    throw error;
   }
 }
 
