@@ -120,20 +120,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       welcomeScreen.style.display = "flex";
       chatBox.style.display = "none";
       
+      // Remove previous beforeunload event if it exists
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      
       // Add window unload event to clean up empty chats when user leaves
-      window.addEventListener('beforeunload', async (event) => {
-        // If there's a current chat, check if it's empty
-        if (currentChatId) {
-          // We can't await this in beforeunload, but we can try to start the process
-          cleanupEmptyChat(currentChatId);
-        }
-      });
+      // But only if there are no messages in the current chat
+      window.addEventListener('beforeunload', handleBeforeUnload);
     } else {
       // User is signed out, redirect to login page
       window.location.href = 'login.html';
     }
   });
 });
+
+// Handle beforeunload event
+function handleBeforeUnload(event) {
+  // Only attempt cleanup if there's a current chat and it appears to be empty
+  // (no user messages in the UI)
+  if (currentChatId && !document.querySelector('.user-message')) {
+    // We can't await this in beforeunload, but we can try to start the process
+    // We won't delete the current chat if it has messages in Firestore
+    cleanupEmptyChat(currentChatId);
+  }
+}
 
 // Wait for Firebase to initialize
 function waitForFirebase() {
@@ -354,7 +363,7 @@ function addChatSection(title, chats) {
 async function setCurrentChat(chatId) {
   try {
     // If we're switching from an existing chat, check if it's empty and delete it if so
-    if (currentChatId) {
+    if (currentChatId && currentChatId !== chatId) {
       await cleanupEmptyChat(currentChatId);
     }
     
@@ -392,6 +401,13 @@ async function setCurrentChat(chatId) {
     
     if (!chatDoc.exists()) {
       console.error("Chat not found");
+      
+      // Create a new chat instead
+      console.log("Creating new chat as replacement");
+      await createNewChat();
+      
+      // Show notification
+      showNotification('Chat not found. Created a new chat.', 'warning');
       return;
     }
     
@@ -441,6 +457,11 @@ async function setCurrentChat(chatId) {
 // Check if a chat is empty and delete it if it is
 async function cleanupEmptyChat(chatId) {
   try {
+    // Skip cleanup if this is the current chat that's actively being used
+    if (chatId === currentChatId && document.querySelector('.user-message')) {
+      return; // Don't delete the current chat if it has messages in the UI
+    }
+    
     // Get chat data
     const chatDocRef = doc(window.db, 'chats', chatId);
     const chatDoc = await getDoc(chatDocRef);
@@ -466,6 +487,11 @@ async function cleanupEmptyChat(chatId) {
       const chatElement = document.querySelector(`.history-item[data-id="${chatId}"]`);
       if (chatElement) {
         chatElement.remove();
+      }
+      
+      // If this was the current chat, reset the currentChatId
+      if (chatId === currentChatId) {
+        currentChatId = null;
       }
     }
   } catch (error) {
@@ -552,46 +578,55 @@ async function sendQuestion() {
     return;
   }
   
-  // Check if we have a current chat ID
-  if (!currentChatId) {
-    // Create a new chat
-    await createNewChat();
-  }
-  
-  // Show chat box and hide welcome screen
-  welcomeScreen.style.display = "none";
-  chatBox.style.display = "flex";
-  
-  // Add user message to UI
-  addMessageToChat("user", question);
-  
-  // Clear input field and reset height
-  userInput.value = "";
-  userInput.style.height = "auto";
-  
-  // Add user message to chat history
-  chatHistory.push({ role: "user", content: question });
-  
-  // Save user message to Firestore
-  await saveChatMessage({ role: "user", content: question });
-  
-  // Update chat title if this is the first message
-  const chatDocRef = doc(window.db, 'chats', currentChatId);
-  const chatDoc = await getDoc(chatDocRef);
-  if (chatDoc.exists()) {
-    const chat = chatDoc.data();
-    if (!chat.messages || chat.messages.length <= 1) {
-      updateChatTitle(question);
-    }
-  }
-  
-  // Show loading indicator
-  showLoading();
-  
-  // Reset retry count for this new request
-  retryCount = 0;
-  
   try {
+    // Check if we have a current chat ID
+    if (!currentChatId) {
+      // Create a new chat
+      await createNewChat();
+    } else {
+      // Verify the chat exists
+      const chatDocRef = doc(window.db, 'chats', currentChatId);
+      const chatDoc = await getDoc(chatDocRef);
+      
+      if (!chatDoc.exists()) {
+        console.log("Current chat not found, creating new one");
+        await createNewChat();
+      }
+    }
+    
+    // Show chat box and hide welcome screen
+    welcomeScreen.style.display = "none";
+    chatBox.style.display = "flex";
+    
+    // Add user message to UI
+    addMessageToChat("user", question);
+    
+    // Clear input field and reset height
+    userInput.value = "";
+    userInput.style.height = "auto";
+    
+    // Add user message to chat history
+    chatHistory.push({ role: "user", content: question });
+    
+    // Save user message to Firestore
+    await saveChatMessage({ role: "user", content: question });
+    
+    // Update chat title if this is the first message
+    const chatDocRef = doc(window.db, 'chats', currentChatId);
+    const chatDoc = await getDoc(chatDocRef);
+    if (chatDoc.exists()) {
+      const chat = chatDoc.data();
+      if (!chat.messages || chat.messages.length <= 1) {
+        updateChatTitle(question);
+      }
+    }
+    
+    // Show loading indicator
+    showLoading();
+    
+    // Reset retry count for this new request
+    retryCount = 0;
+    
     // Send request to Gemini API
     const response = await sendRequestWithBackoff(question);
     
@@ -622,6 +657,9 @@ async function sendQuestion() {
     
     // Save error message to Firestore
     await saveChatMessage({ role: "assistant", content: "Sorry, I couldn't process your question. Please try again." });
+    
+    // Show notification
+    showNotification('An error occurred. Please try again.', 'error');
   }
 }
 
@@ -659,12 +697,33 @@ async function updateChatTitle(message) {
 // Save chat message to Firestore
 async function saveChatMessage(message) {
   try {
+    // Make sure we have a valid chat ID
+    if (!currentChatId) {
+      console.log("Creating new chat for message");
+      await createNewChat();
+      
+      // If still no chat ID, show error and return
+      if (!currentChatId) {
+        throw new Error("Failed to create chat");
+      }
+    }
+    
     // Get current messages
     const chatDocRef = doc(window.db, 'chats', currentChatId);
     const chatDoc = await getDoc(chatDocRef);
     
+    // If chat doesn't exist, create a new one
     if (!chatDoc.exists()) {
-      throw new Error("Chat not found");
+      console.log("Chat not found, creating new one");
+      
+      // Save current message to preserve it
+      const currentMessage = message;
+      
+      // Create a new chat
+      await createNewChat();
+      
+      // Save the message to the new chat
+      return await saveChatMessage(currentMessage);
     }
     
     const chat = chatDoc.data();
@@ -830,8 +889,14 @@ function addMessageToChat(role, content) {
   const processedContent = processContent(content);
   messageContent.innerHTML = processedContent;
   
-  messageDiv.appendChild(avatar);
-  messageDiv.appendChild(messageContent);
+  // Add elements to the message div (order matters for flex-direction)
+  if (role === "user") {
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(messageContent);
+  } else {
+    messageDiv.appendChild(messageContent);
+    messageDiv.appendChild(avatar);
+  }
   
   chatBox.appendChild(messageDiv);
   
@@ -902,9 +967,12 @@ function showLoading() {
     loadingIndicator.appendChild(dot);
   }
   
-  loadingDiv.appendChild(avatar);
+  // Add loading indicator to message content
+  messageContent.appendChild(loadingIndicator);
+  
+  // Add elements in the correct order for bot message (content first, then avatar)
   loadingDiv.appendChild(messageContent);
-  loadingDiv.appendChild(loadingIndicator);
+  loadingDiv.appendChild(avatar);
   
   chatBox.appendChild(loadingDiv);
   scrollToBottom();

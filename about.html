@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us - Math Assistant</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="about.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="about-container">
+    <!-- Header Section -->
+    <header class="about-header">
+      <div class="about-header-content">
+        <div class="about-logo">
+          <i class="fas fa-square-root-alt"></i>
+          <h1>Math Assistant</h1>
+        </div>
+        <h2 class="about-title">About Us</h2>
+        <p class="about-version">Version 1.0.0</p>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="about-main">
+      <!-- Developer Information -->
+      <section class="about-section">
+        <h2 class="section-title">Developer</h2>
+        <div class="about-card">
+          <div class="developer-profile">
+            <div class="developer-avatar">
+              <span>HT</span>
+            </div>
+            <div class="developer-info">
+              <h3>Haseeb Tariq</h3>
+              <p class="developer-role">Web Developer</p>
+              <a href="mailto:haseebawang4545@gmail.com" class="developer-email">
+                <i class="fas fa-envelope"></i>
+                <span>haseebawang4545@gmail.com</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="social-section">
+            <h3>Connect with me</h3>
+            <div class="social-grid">
+              <a href="https://instagram.com/haseeb_awan45" target="_blank" class="social-button instagram">
+                <i class="fab fa-instagram"></i>
+                <span>Instagram</span>
+              </a>
+              <a href="https://twitter.com/haseeb_awan45" target="_blank" class="social-button twitter">
+                <i class="fab fa-twitter"></i>
+                <span>Twitter</span>
+              </a>
+              <a href="https://github.com/HaseebTariq45" target="_blank" class="social-button github">
+                <i class="fab fa-github"></i>
+                <span>GitHub</span>
+              </a>
+              <a href="https://snapchat.com/add/haseeb_awan45" target="_blank" class="social-button snapchat">
+                <i class="fab fa-snapchat-ghost"></i>
+                <span>Snapchat</span>
+              </a>
+              <a href="https://threads.net/@haseeb_awan45" target="_blank" class="social-button threads">
+                <i class="fas fa-at"></i>
+                <span>Threads</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <a href="https://github.com/HaseebTariq45/Math-Assistant" target="_blank" class="github-project">
+            <div class="github-icon">
+              <i class="fab fa-github"></i>
+            </div>
+            <div class="github-info">
+              <h3>View Project on GitHub</h3>
+              <p>@HaseebTariq45</p>
+            </div>
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        </div>
+      </section>
+
+      <!-- App Information -->
+      <section class="about-section">
+        <h2 class="section-title">About This App</h2>
+        <div class="about-card">
+          <h3>Math Assistant</h3>
+          <p class="app-description">
+            Math Assistant is an AI-powered web application designed to help users solve complex mathematical problems. 
+            It provides step-by-step solutions, explanations, and visualizations to enhance understanding of mathematical concepts.
+          </p>
+
+          <h3>Features:</h3>
+          <ul class="feature-list">
+            <li>
+              <i class="fas fa-check-circle"></i>
+              <span>Solve complex math problems step-by-step</span>
+            </li>
+            <li>
+              <i class="fas fa-check-circle"></i>
+              <span>Beautiful LaTeX math formatting</span>
+            </li>
+            <li>
+              <i class="fas fa-check-circle"></i>
+              <span>Save conversation history</span>
+            </li>
+            <li>
+              <i class="fas fa-check-circle"></i>
+              <span>Resume from where you left off</span>
+            </li>
+            <li>
+              <i class="fas fa-check-circle"></i>
+              <span>Get personalized learning recommendations</span>
+            </li>
+            <li>
+              <i class="fas fa-check-circle"></i>
+              <span>Access your saved conversations</span>
+            </li>
+            <li>
+              <i class="fas fa-check-circle"></i>
+              <span>Secure and private account</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Back to App Button -->
+      <div class="back-to-app">
+        <a href="index.html" class="back-button">
+          <i class="fas fa-arrow-left"></i>
+          <span>Back to Math Assistant</span>
+        </a>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="about-footer">
+      <p>&copy; 2023 Math Assistant. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+    
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBiYV6Or5qxAdqXcPgInRRwxbwnEHdzOjc",
+      authDomain: "math-assistant-2c90a.firebaseapp.com",
+      projectId: "math-assistant-2c90a",
+      storageBucket: "math-assistant-2c90a.firebasestorage.app",
+      messagingSenderId: "422435777202",
+      appId: "1:422435777202:web:0667e26f5f532325d6b7ab",
+      measurementId: "G-8BK4L8LYVX"
+    };
+  
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    
+    // Check authentication state
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        // User is not signed in, redirect to login page
+        window.location.href = 'login.html';
+      }
+    });
+  </script>
+</body>
+</html> 
