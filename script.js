@@ -3,7 +3,7 @@ const API_KEY = "AIzaSyDT28ot1ZVsC0zkBkhDKZoTq3HnWbkjWV8";
 const API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
 
 // Import Firestore functions (these will be available after Firebase initializes)
-let getDocs, query, orderBy, doc, setDoc, Timestamp, getDoc, updateDoc;
+let getDocs, query, orderBy, doc, setDoc, Timestamp, getDoc, updateDoc, deleteDoc;
 
 // DOM Elements
 const chatBox = document.getElementById("chat-box");
@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   Timestamp = firestoreModule.Timestamp;
   getDoc = firestoreModule.getDoc;
   updateDoc = firestoreModule.updateDoc;
+  deleteDoc = firestoreModule.deleteDoc;
   
   // Check authentication
   window.auth.onAuthStateChanged(async (user) => {
@@ -112,12 +113,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       userChatsCollection = window.firestoreCollection(window.db, 'users', user.uid, 'chats');
       
       // Load chat history
-      loadChatHistory();
+      await loadChatHistory();
       
-      // Create a new chat if none exists
-      if (!currentChatId) {
-        createNewChat();
-      }
+      // Do NOT create a new chat automatically - wait for user to send a message or click "New Chat"
+      // Show the welcome screen initially
+      welcomeScreen.style.display = "flex";
+      chatBox.style.display = "none";
+      
+      // Add window unload event to clean up empty chats when user leaves
+      window.addEventListener('beforeunload', async (event) => {
+        // If there's a current chat, check if it's empty
+        if (currentChatId) {
+          // We can't await this in beforeunload, but we can try to start the process
+          cleanupEmptyChat(currentChatId);
+        }
+      });
     } else {
       // User is signed out, redirect to login page
       window.location.href = 'login.html';
@@ -158,8 +168,10 @@ async function loadChatHistory() {
     chatHistoryContainer.innerHTML = '';
     
     if (snapshot.empty) {
-      // No chats found, create a new one
-      createNewChat();
+      // No chats found, but don't create a new one automatically
+      // Just show the welcome screen
+      welcomeScreen.style.display = "flex";
+      chatBox.style.display = "none";
       return;
     }
     
@@ -281,6 +293,11 @@ function addChatSection(title, chats) {
 // Set current chat
 async function setCurrentChat(chatId) {
   try {
+    // If we're switching from an existing chat, check if it's empty and delete it if so
+    if (currentChatId) {
+      await cleanupEmptyChat(currentChatId);
+    }
+    
     // Set current chat ID
     currentChatId = chatId;
     
@@ -361,9 +378,49 @@ async function setCurrentChat(chatId) {
   }
 }
 
+// Check if a chat is empty and delete it if it is
+async function cleanupEmptyChat(chatId) {
+  try {
+    // Get chat data
+    const chatDocRef = doc(window.db, 'chats', chatId);
+    const chatDoc = await getDoc(chatDocRef);
+    
+    if (!chatDoc.exists()) {
+      return; // Chat doesn't exist, nothing to clean up
+    }
+    
+    const chat = chatDoc.data();
+    
+    // Check if chat has no messages
+    if (!chat.messages || chat.messages.length === 0) {
+      console.log("Cleaning up empty chat:", chatId);
+      
+      // Delete from main chats collection
+      await deleteDoc(chatDocRef);
+      
+      // Delete from user's chats collection
+      const userChatRef = doc(window.db, 'users', currentUser.uid, 'chats', chatId);
+      await deleteDoc(userChatRef);
+      
+      // Remove from sidebar if it exists
+      const chatElement = document.querySelector(`.history-item[data-id="${chatId}"]`);
+      if (chatElement) {
+        chatElement.remove();
+      }
+    }
+  } catch (error) {
+    console.error("Error cleaning up empty chat:", error);
+  }
+}
+
 // Create a new chat
 async function createNewChat() {
   try {
+    // If we're switching from an existing chat, check if it's empty and delete it if so
+    if (currentChatId) {
+      await cleanupEmptyChat(currentChatId);
+    }
+    
     if (!currentUser) {
       console.error("No user signed in");
       return;
